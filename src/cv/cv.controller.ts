@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CvService } from './cv.service';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -36,5 +36,11 @@ export class CvController {
   @ApiParam({ name: 'cvId', description: 'CV ID' })
   getCvChunksById(@Param('cvId') cvId: string) {
     return this.cvService.getCvChunksById(cvId);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Search CV documents' })
+  search( @Query('query') query: string): Promise<string> {
+    return this.cvService.search(query);
   }
 }

@@ -27,6 +27,42 @@ export class CvService {
     }
   }
 
+  async search(query: string): Promise<string> {
+    try {
+      const questionEmbedding = await this.createEmbeddings(query);
+      const vector = `[${questionEmbedding.join(',')}]`;
+  
+      const rows = await this.dataSource.query(`
+        SELECT id, cv_id, content, embedding
+        FROM cv_chunks
+        ORDER BY embedding <=> $1::vector
+        LIMIT 2
+      `, [vector]);
+
+      return await this.answerQuestion(rows.map((row) => row.content), query);
+    } catch (error) {
+      throw new Error(`Failed to search CV: ${error.message}`);
+    }
+  }
+
+  async answerQuestion(chunks: string[], query: string): Promise<string> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "Answer questions based only on the provided context. If the answer is not in the context, say so explicitly." },
+          { role: "user", content: `Context:\n${chunks.join("\n\n")}\n\nQuestion: ${query}` },
+        ]
+      });
+      if( !response.choices[0].message.content ) {
+        throw new Error('Failed to answer question');
+      }
+      return response.choices[0].message.content;
+    } catch (error) {
+      throw new Error(`Failed to answer question: ${error.message}`);
+    }
+  }
+
   async convertPdf(file: Express.Multer.File): Promise<string> {
     const pdfParser = new PDFParse({ data: file.buffer });
     try {

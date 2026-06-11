@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CvModule } from './cv/cv.module';
 import { CvChunk } from './cv/cvChunk.entity';
-import { SearchModule } from './search/search.module';
 
 @Module({
   imports: [
@@ -13,7 +12,6 @@ import { SearchModule } from './search/search.module';
       synchronize: true,
     }),
     CvModule,
-    SearchModule,
   ],
 })
 export class AppModule {}
