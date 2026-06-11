@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { PDFParse } from 'pdf-parse';
 import OpenAI from "openai";
@@ -8,16 +9,10 @@ import { CvChunk } from './cvChunk.entity';
 @Injectable()
 export class CvService {
   private readonly openai: OpenAI;
-  private readonly dataSource: DataSource;
-  constructor() {
+
+  constructor(@InjectDataSource() private readonly dataSource: DataSource) {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
-    });
-    this.dataSource = new DataSource({
-      type: "postgres",
-      url: process.env.DATABASE_URL,
-      entities: [CvChunk],
-      synchronize: true,
     });
   }
 
@@ -69,10 +64,6 @@ export class CvService {
   }
 
   async getCvChunks(): Promise<CvChunk[]> {
-    if (!this.dataSource.isInitialized) {
-      await this.dataSource.initialize();
-    }
-
     try {
       const repository = this.dataSource.getRepository(CvChunk);
       return repository.find({
@@ -84,10 +75,6 @@ export class CvService {
   }
 
   async getCvChunksById(cvId: string): Promise<CvChunk[]> {
-    if (!this.dataSource.isInitialized) {
-      await this.dataSource.initialize();
-    }
-
     try {
       const repository = this.dataSource.getRepository(CvChunk);
       return repository.find({
@@ -100,10 +87,6 @@ export class CvService {
   }
 
   async saveChunksToDatabase(cvId: string, chunks: string[]): Promise<void> {
-    if (!this.dataSource.isInitialized) {
-      await this.dataSource.initialize();
-    }
-
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -111,7 +94,6 @@ export class CvService {
     try {
       for (const chunk of chunks) {
         const embedding = await this.createEmbeddings(chunk);
-        console.log(embedding);
         await queryRunner.query(
           `INSERT INTO cv_chunks (cv_id, content, embedding) VALUES ($1, $2, $3::vector)`,
           [cvId, chunk, `[${embedding.join(',')}]`],
