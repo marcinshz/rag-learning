@@ -20,8 +20,9 @@ export class CvService {
     try {
       const rawText = await this.convertPdf(file);
       const chunks = this.splitTextIntoChunksByChars(rawText, 250);
+      const metadata = await this.extractMetadata(rawText);
       const cvId = randomUUID();
-      await this.saveChunksToDatabase(cvId, chunks);
+      await this.saveChunksToDatabase(cvId, chunks, metadata);
     } catch (error) {
       throw new Error(`Failed to ingest CV: ${error.message}`);
     }
@@ -33,25 +34,25 @@ export class CvService {
       const vector = `[${questionEmbedding.join(',')}]`;
   
       const rows = await this.dataSource.query(`
-        SELECT id, cv_id, content, embedding
+        SELECT id, cv_id, content, embedding, metadata
         FROM cv_chunks
         ORDER BY embedding <=> $1::vector
         LIMIT 2
       `, [vector]);
 
-      return await this.answerQuestion(rows.map((row) => row.content), query);
+      return await this.answerQuestion(rows.map((row) => ({content: row.content, metadata: row.metadata})), query);
     } catch (error) {
       throw new Error(`Failed to search CV: ${error.message}`);
     }
   }
 
-  async answerQuestion(chunks: string[], query: string): Promise<string> {
+  async answerQuestion(chunks: {content: string, metadata: Record<string, unknown>}[], query: string): Promise<string> {
     try {
       const response = await this.openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "Answer questions based only on the provided context. If the answer is not in the context, say so explicitly." },
-          { role: "user", content: `Context:\n${chunks.join("\n\n")}\n\nQuestion: ${query}` },
+          { role: "user", content: JSON.stringify(chunks) + "\n\nQuestion: " + query},
         ]
       });
       if( !response.choices[0].message.content ) {
@@ -60,6 +61,25 @@ export class CvService {
       return response.choices[0].message.content;
     } catch (error) {
       throw new Error(`Failed to answer question: ${error.message}`);
+    }
+  }
+
+  async extractMetadata(rawText: string): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "Extract metadata from the provided text. The metadata should be a JSON object with the following keys: name, city, position, university degree, years of experience" },
+          { role: "user", content: rawText },
+        ],
+        response_format: { type: "json_object" },
+      });
+      if(!response.choices[0].message.content) {
+        throw new Error('Failed to extract metadata');
+      }
+      return JSON.parse(response.choices[0].message.content);
+    } catch (error) {
+        throw new Error(`Failed to extract metadata: ${error.message}`);
     }
   }
 
@@ -122,7 +142,7 @@ export class CvService {
     }
   }
 
-  async saveChunksToDatabase(cvId: string, chunks: string[]): Promise<void> {
+  async saveChunksToDatabase(cvId: string, chunks: string[], metadata: Record<string, unknown>): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -131,8 +151,8 @@ export class CvService {
       for (const chunk of chunks) {
         const embedding = await this.createEmbeddings(chunk);
         await queryRunner.query(
-          `INSERT INTO cv_chunks (cv_id, content, embedding) VALUES ($1, $2, $3::vector)`,
-          [cvId, chunk, `[${embedding.join(',')}]`],
+          `INSERT INTO cv_chunks (cv_id, content, embedding, metadata) VALUES ($1, $2, $3::vector, $4)`,
+          [cvId, chunk, `[${embedding.join(',')}]`, metadata],
         );
       }
       await queryRunner.commitTransaction();
