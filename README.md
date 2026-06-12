@@ -1,47 +1,45 @@
-# cv-rag
+# RAG Lab
 
-A learning project exploring AI Engineering through a practical use case: searching and querying CVs using Retrieval-Augmented Generation (RAG).
+A playground for experimenting with different Retrieval-Augmented Generation (RAG) approaches. Each module is a self-contained use case with its own ingestion pipeline, retrieval strategy, and answer generation — sharing the same NestJS + PostgreSQL/pgvector foundation.
 
-## What it does
+The CV module was the starting point; more modules will follow as different RAG patterns are explored (chunking, metadata, hybrid search, re-ranking, etc.).
 
-Upload a PDF CV, ask questions in natural language, get answers grounded in the document.
+## Architecture
 
 ```
+<<<<<<< Updated upstream
 POST /cv/ingest     → upload a PDF, chunk it, embed it, store in vector DB
 GET /search/ask    → ask a question, get an answer backed by relevant CV fragments
+=======
+src/
+├── app.module.ts          # shared DB + module wiring
+└── cv/                    # module: CV search over PDFs
+    ├── cv.module.ts
+    ├── cv.controller.ts
+    ├── cv.service.ts
+    └── cvChunk.entity.ts
+>>>>>>> Stashed changes
 ```
 
-Under the hood: the CV is split into chunks, each chunk is converted to a vector embedding via OpenAI, and stored in PostgreSQL with pgvector. On search, the question is embedded with the same model, the closest chunks are retrieved by cosine similarity, and passed as context — together with candidate metadata — to GPT-4o-mini.
+Each module owns its routes, entities, and RAG logic. Shared infrastructure (Postgres, pgvector, OpenAI) lives at the app level.
 
-## Stack
+## Modules
 
-- **NestJS** — API
-- **PostgreSQL + pgvector** — vector storage and similarity search
-- **OpenAI** — `text-embedding-3-small` for embeddings, `gpt-4o-mini` for answers and metadata extraction
-- **pdf-parse** — PDF to raw text
-- **Docker Compose** — local development
+### CV (`/cv`)
 
-## Getting started
+Search and query PDF CVs using a basic vector RAG pipeline.
 
-```bash
-# 1. Clone and install
-git clone https://github.com/your-username/cv-rag
-cd cv-rag
+| Endpoint | Description |
+|----------|-------------|
+| `POST /cv/ingest` | Upload a PDF — chunk, embed, store |
+| `POST /cv/ingest/batch` | Upload multiple PDFs |
+| `GET /cv/search?query=...` | Ask a question, get an answer from relevant chunks |
+| `GET /cv/chunks` | List all stored chunks |
+| `GET /cv/chunks/:cvId` | List chunks for a specific CV |
 
-# 2. Set up environment
-echo "OPENAI_API_KEY=sk-..." > .env
+**Ingestion:** PDF → raw text → metadata extraction (GPT-4o-mini) → fixed-size character chunks (250 chars) → embeddings (`text-embedding-3-small`, 1536 dims) → pgvector storage with JSONB metadata on every chunk.
 
-# 3. Docker compose up
-docker compose up --build
-```
-
-## 4. Try it out — Swagger UI
-
-```
-http://localhost:3000/api/docs
-```
-
-## How RAG works here
+**Retrieval:** embed the question → cosine similarity search → pass top chunks + candidate metadata to GPT-4o-mini for the answer.
 
 ```
 PDF
@@ -55,17 +53,47 @@ PDF
 
 Question
  └─ embedding (same model)
-     └─ cosine similarity search → top 2 chunks
+     └─ cosine similarity search → top-N chunks
          └─ chunk content + candidate metadata
              └─ GPT-4o-mini → answer
 ```
 
-The key insight: instead of sending the entire CV to the model on every query, only the semantically relevant fragments are retrieved. Cheaper, faster, and scales to many documents.
+## Stack
 
-Metadata is extracted once at ingestion time using a structured OpenAI call (`response_format: json_object`). It travels with every chunk, so the model always knows who the candidate is — even when the matched fragment doesn't mention their name.
+- **NestJS** — API, modular structure
+- **PostgreSQL + pgvector** — vector storage and similarity search
+- **OpenAI** — `text-embedding-3-small` for embeddings, `gpt-4o-mini` for answers and metadata extraction
+- **pdf-parse** — PDF to raw text (CV module)
+- **Docker Compose** — local development
+
+## Getting started
+
+```bash
+# 1. Clone and install
+git clone https://github.com/your-username/cv-rag
+cd cv-rag
+pnpm install
+
+# 2. Set up environment
+echo "OPENAI_API_KEY=sk-..." > .env
+
+# 3. Start services
+docker compose up --build
+```
+
+Swagger UI: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
 
 ## Roadmap
 
+**CV module**
 - [x] Single CV ingestion and search
 - [x] Metadata extraction — name, city, position, education, years of experience
+<<<<<<< Updated upstream
 - [x] Multi-CV support with candidate filtering by metadata
+=======
+- [x] Multi-CV support
+- [ ] Metadata-based pre-filtering before vector search
+
+**New modules & shared experiments**
+- TBD
+>>>>>>> Stashed changes
