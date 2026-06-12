@@ -27,42 +27,25 @@ Under the hood: the CV is split into chunks, each chunk is converted to a vector
 # 1. Clone and install
 git clone https://github.com/your-username/cv-rag
 cd cv-rag
-npm install
 
 # 2. Set up environment
 echo "OPENAI_API_KEY=sk-..." > .env
 
-# 3. Start Postgres with pgvector
-docker-compose up -d postgres
+# 3. Docker compose up
+docker compose up --build
 
 # 4. Run migrations
 docker exec -it postgres psql -U postgres -d cvrag -c "
   CREATE EXTENSION IF NOT EXISTS vector;
-  CREATE TABLE cv_chunks (
-    id SERIAL PRIMARY KEY,
-    cv_id VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL,
-    embedding vector(1536),
-    metadata JSONB
-  );
-  CREATE INDEX ON cv_chunks USING ivfflat (embedding vector_cosine_ops);
+
+  CREATE INDEX ON cv_chunks 
+    USING ivfflat (embedding vector_cosine_ops);
 "
 
-# 5. Start the API
-npm run start:dev
-```
+## 5. Try it out - Swagger UI (interactive docs)
 
-## Usage
+http://localhost:3000/api/docs
 
-```bash
-# Upload a CV
-curl -X POST localhost:3000/cv/ingest \
-  -F "file=@/path/to/cv.pdf"
-
-# Ask a question
-curl -X POST localhost:3000/search/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question": "Does this candidate have React experience?"}'
 ```
 
 ## How RAG works here
