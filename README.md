@@ -7,10 +7,6 @@ The CV module was the starting point; more modules will follow as different RAG 
 ## Architecture
 
 ```
-<<<<<<< Updated upstream
-POST /cv/ingest     → upload a PDF, chunk it, embed it, store in vector DB
-GET /search/ask    → ask a question, get an answer backed by relevant CV fragments
-=======
 src/
 ├── app.module.ts          # shared DB + module wiring
 └── cv/                    # module: CV search over PDFs
@@ -18,7 +14,6 @@ src/
     ├── cv.controller.ts
     ├── cv.service.ts
     └── cvChunk.entity.ts
->>>>>>> Stashed changes
 ```
 
 Each module owns its routes, entities, and RAG logic. Shared infrastructure (Postgres, pgvector, OpenAI) lives at the app level.
@@ -88,12 +83,8 @@ Swagger UI: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
 **CV module**
 - [x] Single CV ingestion and search
 - [x] Metadata extraction — name, city, position, education, years of experience
-<<<<<<< Updated upstream
-- [x] Multi-CV support with candidate filtering by metadata
-=======
 - [x] Multi-CV support
 - [ ] Metadata-based pre-filtering before vector search
 
 **New modules & shared experiments**
 - TBD
->>>>>>> Stashed changes
