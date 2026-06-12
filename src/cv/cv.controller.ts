@@ -1,7 +1,7 @@
-import { Controller, Get, Param, Post, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CvService } from './cv.service';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('cv')
 @Controller('cv')
@@ -23,6 +23,26 @@ export class CvController {
   @UseInterceptors(FileInterceptor('file'))
   ingest(@UploadedFile() file: Express.Multer.File): void {
     this.cvService.ingest(file);
+  }
+
+  @Post('ingest/batch')
+  @ApiOperation({ summary: 'Ingest multiple CV documents' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+        },
+      },
+    },
+    required: true,
+  })
+  @UseInterceptors(FilesInterceptor('files'))
+  ingestMany(@UploadedFiles() files: Express.Multer.File[]): void {
+    this.cvService.ingestMany(files);
   }
 
   @Get('chunks')
