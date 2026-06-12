@@ -8,7 +8,7 @@ Upload a PDF CV, ask questions in natural language, get answers grounded in the 
 
 ```
 POST /cv/ingest     → upload a PDF, chunk it, embed it, store in vector DB
-POST /search/ask    → ask a question, get an answer backed by relevant CV fragments
+GET /search/ask    → ask a question, get an answer backed by relevant CV fragments
 ```
 
 Under the hood: the CV is split into chunks, each chunk is converted to a vector embedding via OpenAI, and stored in PostgreSQL with pgvector. On search, the question is embedded with the same model, the closest chunks are retrieved by cosine similarity, and passed as context — together with candidate metadata — to GPT-4o-mini.
