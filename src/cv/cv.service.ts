@@ -28,17 +28,32 @@ export class CvService {
     }
   }
 
+  async ingestMany(files: Express.Multer.File[]): Promise<void> {
+    for (const file of files) {
+      await this.ingest(file);
+    }
+  }
+
+  async countUniqueCvs(): Promise<number> {
+    const repository = this.dataSource.getRepository(CvChunk);
+    const result = await repository
+      .createQueryBuilder('chunk')
+      .select('COUNT(DISTINCT chunk.cvId)', 'count')
+      .getRawOne<{ count: string }>();
+    return Number(result?.count ?? 0);
+  }
+
   async search(query: string): Promise<string> {
     try {
       const questionEmbedding = await this.createEmbeddings(query);
       const vector = `[${questionEmbedding.join(',')}]`;
-  
+      const limit = await this.countUniqueCvs();
       const rows = await this.dataSource.query(`
         SELECT id, cv_id, content, embedding, metadata
         FROM cv_chunks
         ORDER BY embedding <=> $1::vector
-        LIMIT 2
-      `, [vector]);
+        LIMIT $2
+      `, [vector, Math.floor(limit*1.5)]);
 
       return await this.answerQuestion(rows.map((row) => ({content: row.content, metadata: row.metadata})), query);
     } catch (error) {

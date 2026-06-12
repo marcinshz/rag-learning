@@ -68,5 +68,4 @@ Metadata is extracted once at ingestion time using a structured OpenAI call (`re
 
 - [x] Single CV ingestion and search
 - [x] Metadata extraction — name, city, position, education, years of experience
-- [ ] Multi-CV support with candidate filtering by metadata
-- [ ] Semantic chunking and parent-child chunking strategies
+- [x] Multi-CV support with candidate filtering by metadata
