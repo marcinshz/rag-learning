@@ -8,6 +8,8 @@ import { DocumentChunk } from './documentChunk.entity';
 
 @Injectable()
 export class DocumentService {
+    private static readonly DEFAULT_CHUNK_LIMIT = 5;
+
     private readonly openai: OpenAI;
 
     constructor(@InjectDataSource() private readonly dataSource: DataSource) {
@@ -28,9 +30,22 @@ export class DocumentService {
         }
     }
 
-    // Fixed limit, to be improved
-    async searchInSingleDocument(documentId: string, query: string): Promise<string> {
+    async searchInSingleDocument(
+        documentId: string,
+        query: string,
+        chunkLimit = DocumentService.DEFAULT_CHUNK_LIMIT,
+    ): Promise<string> {
         try {
+          const totalChunks = await this.countChunksByDocumentId(documentId);
+          if (totalChunks === 0) {
+            throw new Error('Document not found or has no chunks');
+          }
+
+          const limit = Math.min(
+            Math.max(1, chunkLimit),
+            totalChunks,
+          );
+
           const questionEmbedding = await this.createEmbeddings(query);
           const vector = `[${questionEmbedding.join(',')}]`;
           const rows = await this.dataSource.query(`
@@ -38,8 +53,8 @@ export class DocumentService {
             FROM document_chunks
             WHERE document_id = $1
             ORDER BY embedding <=> $2::vector
-            LIMIT 5
-          `, [documentId, vector]);
+            LIMIT $3
+          `, [documentId, vector, limit]);
     
           return await this.answerQuestion(rows.map((row) => ({content: row.content, metadata: row.metadata})), query);
         } catch (error) {

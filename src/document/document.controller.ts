@@ -1,5 +1,5 @@
-import { Controller, Get, Param, Post, Query, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Post, Query, UploadedFile, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { DocumentService } from './document.service';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 
@@ -41,7 +41,13 @@ export class DocumentController {
   @Get('search/:documentId')
   @ApiOperation({ summary: 'Search a document' })
   @ApiParam({ name: 'documentId', description: 'Document ID' })
-  search( @Param('documentId') documentId: string, @Query('query') query: string): Promise<string> {
-    return this.documentService.searchInSingleDocument(documentId, query);
-  } 
+  @ApiQuery({ name: 'query', required: true, description: 'Search query' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max number of chunks to retrieve from vector search (default: 5)' })
+  search(
+    @Param('documentId') documentId: string,
+    @Query('query') query: string,
+    @Query('limit', new DefaultValuePipe(5), ParseIntPipe) limit: number,
+  ): Promise<string> {
+    return this.documentService.searchInSingleDocument(documentId, query, limit);
+  }
 }

@@ -67,11 +67,11 @@ Search and query PDF documents using structure-aware chunking — an alternative
 | `POST /document/ingest` | Upload a PDF — convert to Markdown, chunk by section, embed, store |
 | `GET /document/chunks` | List all stored chunks |
 | `GET /document/chunks/:documentId/count` | Count chunks for a specific document |
-| `GET /document/search/:documentId?query=...` | Ask a question scoped to one document |
+| `GET /document/search/:documentId?query=...&limit=N` | Ask a question scoped to one document; optional `limit` sets how many chunks to retrieve (default: 5) |
 
 **Ingestion:** PDF → Markdown (`@opendocsg/pdf2md`) → H2-section chunks (preamble + each `##` heading) → embeddings (`text-embedding-3-small`, 1536 dims) → pgvector storage with section title in JSONB metadata.
 
-**Retrieval:** embed the question → cosine similarity search within the given `documentId` (top 5 chunks) → pass chunks to GPT-4o-mini for the answer.
+**Retrieval:** embed the question → cosine similarity search within the given `documentId` → pass the top-N chunks to GPT-4o-mini for the answer. Use the optional `limit` query param to control how many chunks are retrieved (default 5, clamped between 1 and the document's total chunk count).
 
 ```
 PDF
@@ -83,9 +83,9 @@ PDF
                  └─ embeddings (1536-dimensional vectors)
                      └─ pgvector storage (document_chunks table)
 
-Question + documentId
+Question + documentId + limit (optional)
  └─ embedding (same model)
-     └─ cosine similarity search (scoped to document) → top-5 chunks
+     └─ cosine similarity search (scoped to document) → top-N chunks
          └─ chunk content
              └─ GPT-4o-mini → answer
 ```
@@ -103,7 +103,7 @@ Question + documentId
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/your-username/cv-rag
+git clone https://github.com/marcinshz/rag-learning
 cd cv-rag
 pnpm install
 
@@ -128,7 +128,8 @@ Swagger UI: [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
 - [x] Single document ingestion with Markdown conversion
 - [x] H2-section chunking (structure-aware, vs fixed-size in CV)
 - [x] Per-document scoped search
-- [ ] Chunking improvements (parent-child chunking, nested headings, size limits)
+- [x] Configurable chunk limit on search (`?limit=N`)
+- [ ] Chunking improvements (parent-child chunking, nested headings)
 
 **New modules & shared experiments**
 - TBD
