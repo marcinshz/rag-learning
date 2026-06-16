@@ -25,6 +25,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.4.4",
     "@nestjs/typeorm": "^11.0.1",
+    "@opendocsg/pdf2md": "^0.2.7",
     "openai": "^6.42.0",
     "pdf-parse": "^2.4.5",
     "pg": "^8.21.0",
